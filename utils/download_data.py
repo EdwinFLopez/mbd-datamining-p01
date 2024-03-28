@@ -22,4 +22,4 @@ def download_data(url: str, target: str) -> None:
         else:
             print(f"Failed to download file from {url}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred downloading {url}: {e}")

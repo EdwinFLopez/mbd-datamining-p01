@@ -37,6 +37,7 @@ It's a big download, do you want to continue? (y/n)?
         uz.unzip_data("./data/audio_files.zip", "./data/audio_files")
     if os.path.exists("./data/spectrograms.zip") and not os.path.exists("./data/spectrograms"):
         uz.unzip_data("./data/spectrograms.zip", "./data/spectrograms")
+
     print("==============================================")
     print("Data folder created and ready to be processed.")
     print("==============================================")

@@ -159,5 +159,8 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
+# Mac Os stuff
+**/.DS_Store
+
 # Data folder where processing takes place. It is huge, we're not storing this in the repo
 data/
