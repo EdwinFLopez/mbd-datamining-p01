@@ -9,7 +9,6 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import cross_val_score
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -88,14 +87,13 @@ def load_features_dataframe(features_file: str, data_folder: str, reload: bool =
 
     # create a dataframe with the features
     columns = ['zero_crossing_rate', 'spectral_centroid', 'spectral_flux', 'spectral_bandwidth', 'energy']
-    columns.extend([f'mfcc_{i}' for i in range(13)])
-    columns.append('label')
-
+    columns.extend([f'mfcc_{i}' for i in range(13)] + ['label'])
     df_feat = pd.DataFrame(data, columns=columns)
 
-    # Grabar matriz
-    df_feat.to_csv(features_file, index=False)
+    if os.path.exists(features_file):
+        os.remove(features_file)
 
+    df_feat.to_csv(features_file, index=False)
     return df_feat
 
 
