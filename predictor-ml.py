@@ -1,21 +1,21 @@
 import numpy as np
 import os
 import librosa as lb
+import matplotlib.pyplot as plt
 import pandas as pd
+import utils.find_files as ff
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay, f1_score
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 
 # ======================================================================================================================
-def extract_features(data: list, bird_name: str, cut_audio: np.array, sr: np.array, window_length: int, hop_length: int) -> list:
+def extract_features(data: list, bird_name: str, cut_audio: np.array, sr: np.array, window_length: int,
+                     hop_length: int) -> list:
     zcr = lb.feature.zero_crossing_rate(y=cut_audio, frame_length=window_length, hop_length=hop_length)
     spectral_centroid = lb.feature.spectral_centroid(y=cut_audio, sr=sr, n_fft=window_length, hop_length=hop_length)
     spectral_flux = lb.onset.onset_strength(
@@ -52,7 +52,6 @@ def load_features_dataframe(features_file: str, data_folder: str, reload: bool =
         return df;
 
     # Reload data from files
-    import utils.find_files as ff
     files = ff.find_files(data_folder, ".mp3")
     data = []
     for bird_name in files.keys():
@@ -100,7 +99,6 @@ def load_features_dataframe(features_file: str, data_folder: str, reload: bool =
 # ======================================================================================================================
 
 if __name__ == "__main__":
-
     df_feat = load_features_dataframe("./data/birds_features.csv", "./data/audio_files")
 
     # Training the Support Vector Machine (SVM)
@@ -128,29 +126,18 @@ if __name__ == "__main__":
 
     # Accuracy of the SVM model
     accuracy_score = accuracy_score(y_test, y_pred_test)
-    print(f"Accuracy - Testing data: {accuracy_score} ")
+    print(f"Accuracy: {accuracy_score}")
+
+    # Calculate the F1-score of the model
+    f1 = f1_score(y_test, y_pred_test, average='weighted')
+    print("F1-score:", f1)
 
     # Additional evaluation metrics
-    print(classification_report(y_test, y_pred_test, target_names=label_encoder.classes_))
+    classification_report = classification_report(y_test, y_pred_test, target_names=label_encoder.classes_)
+    print(f"classification report: \n{classification_report}")
 
     # Confusion Matrix
     conf_matrix = confusion_matrix(y_test, y_pred_test)
-
-    # Assuming 'class_names' is a list containing your class labels
-    class_names = ["Acrocephalus arundinaceus", "Acrocephalus melanopogon", "Acrocephalus scirpaceus",
-                   "Alcedo atthis", "Anas platyrhynchos", "Anas strepera", "Ardea purpurea",
-                   "Botaurus stellaris", "Charadrius alexandrinus", "Ciconia ciconia",
-                   "Circus aeruginosus", "Coracias garrulus", "Dendrocopos minor",
-                   "Fulica atra", "Gallinula chloropus", "Himantopus himantopus",
-                   "Ixobrychus minutus", "Motacilla flava", "Porphyrio porphyrio", "Tachybaptus ruficollis"]
-
-    # Create a DataFrame for better visualization (optional, but recommended)
-    conf_matrix_df = pd.DataFrame(conf_matrix, index=class_names, columns=class_names)
-
-    # Plot the confusion matrix using seaborn
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(conf_matrix_df, annot=True, fmt="d", cmap="Blues", cbar=False)
-    plt.title("Confusion Matrix")
-    plt.xlabel("Predicted Labels")
-    plt.ylabel("True Labels")
+    cmd = ConfusionMatrixDisplay(conf_matrix, display_labels=label_encoder.classes_)
+    cmd.plot(cmap='Blues', xticks_rotation='vertical')
     plt.show()
