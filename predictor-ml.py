@@ -140,4 +140,7 @@ if __name__ == "__main__":
     conf_matrix = confusion_matrix(y_test, y_pred_test)
     cmd = ConfusionMatrixDisplay(conf_matrix, display_labels=label_encoder.classes_)
     cmd.plot(cmap='Blues', xticks_rotation='vertical')
+    plt.title("Matriz de Confusion")
+    plt.ylabel("Verdaderas")
+    plt.xlabel("Predicciones")
     plt.show()
