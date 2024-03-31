@@ -21,13 +21,13 @@ from sklearn.preprocessing import LabelEncoder
 # ======================================================================================================================
 def base_dcnn_algorithm():
     """Algoritmo base de dCNN para reconocimento de audios de pájaros"""
+
     # Set the path to the audio files folder
-    audio_folder = "audio_files"
+    audio_folder = "./data/spectrograms/"
 
     # Initialize empty lists for spectrogram data and labels
     data = []
     labels = []
-
     # Iterate through the audio files in the folder
     for filename in os.listdir(audio_folder):
         if filename.endswith(".mp3"):
@@ -74,7 +74,7 @@ def base_dcnn_algorithm():
         tf.keras.layers.Dense(num_classes, activation='softmax')
     ])
 
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     # Train the model
     model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y_test))
@@ -155,17 +155,10 @@ def load_audio_data(metadata: pd.DataFrame, filename: str, data_folder: str, rel
                         print(f"audio {audio_path} con corte vacio [{start_time}:{end_time}]")
                         continue
 
+                    # Cargar spectrogramas para el segmento dado.
+                    # TODO:
 
-
-                    # Extraer la ventana de características
-                    window_length = len(cut_audio) // 4
-                    hop_length = window_length // 4
-                    #extract_features(data, bird_name, cut_audio, sr, window_length, hop_length)
-
-    # create a dataframe with the features
-    columns = ['zero_crossing_rate', 'spectral_centroid', 'spectral_flux', 'spectral_bandwidth', 'energy']
-    columns.extend([f'mfcc_{i}' for i in range(13)] + ['label'])
-    df_feat = pd.DataFrame(data, columns=columns)
+    df_feat = pd.DataFrame(data)
 
     if os.path.exists(filename):
         os.remove(filename)
@@ -176,9 +169,15 @@ def load_audio_data(metadata: pd.DataFrame, filename: str, data_folder: str, rel
 
 # ======================================================================================================================
 if __name__ == '__main__':
-    metadata_path = "./data/metadata.csv"
-
+    metadata_path = os.path.abspath("./data/metadata.csv")
     print(f"loading metadata file: {metadata_path}")
     metadata = load_metadata(metadata_path)
+    print(metadata.describe())
 
+    # TODO: Ajustar carga de espectrogramas
+    # load_audio_data(metadata, os.path.abspath("./data/birds_data_dcnn.csv"), os.path.abspath("./data/audio_files"))
+
+    # TODO: ajustar para cargar espectrogramas de training y labels obtenidos.
+    # Este es el punto de ejecución del DCNN
+    print("El método base_dcnn_algorithm() aun no se encuentra completo.")
 # ======================================================================================================================
