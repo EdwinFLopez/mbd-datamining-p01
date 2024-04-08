@@ -75,8 +75,6 @@ def load_audio_data(filename: str, data_folder: str, reload: bool = False) -> pd
 # ======================================================================================================================
 if __name__ == "__main__":
     dataframe = load_audio_data(os.path.abspath("./data/birds_data_rf.csv"), os.path.abspath("./data/audio_files"))
-
-    # Convert the lists to numpy arrays
     X = dataframe.drop(columns=['label'])
     Y = dataframe['label']
 
