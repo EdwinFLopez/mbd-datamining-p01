@@ -72,8 +72,7 @@ def load_metadata(metadata_path: str, spectrogram_path: str) -> pd.DataFrame:
 
 
 # ======================================================================================================================
-def load_spectrograms(metadata: pd.DataFrame, filename: str, spectrograms_folder: str,
-                      reload: bool = False) -> pd.DataFrame:
+def load_spectrograms(metadata: pd.DataFrame, filename: str, spectrograms_folder: str, reload: bool = False) -> pd.DataFrame:
     """
     Carga los data del archivo de metadata, removiendo los que no existen, y
     los que tengan segmentos solapados.
@@ -91,7 +90,7 @@ def load_spectrograms(metadata: pd.DataFrame, filename: str, spectrograms_folder
         species = spectrogram.species
         spectro_file_path = f"{spectrograms_folder}/{species}/{spectro_name}"
         if os.path.exists(spectro_file_path):
-            npy = np.load(spectro_file_path)
+            npy = np.abs(np.load(spectro_file_path))
             for entry in npy.T:
                 row = entry.tolist() + [species]
                 data.append(row)
@@ -122,11 +121,11 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
     encoded_labels = label_encoder.fit_transform(y)
 
     # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(x, encoded_labels, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(x, encoded_labels, test_size=0.3, random_state=42)
 
     # Expand dimensions for CNN input
-    X_train = np.expand_dims(X_train, axis=-1)
-    X_test = np.expand_dims(X_test, axis=-1)
+    x_train = np.expand_dims(x_train, axis=-1)
+    x_test = np.expand_dims(x_test, axis=-1)
 
     # One-hot encode the labels
     num_classes = len(np.unique(encoded_labels))
@@ -144,15 +143,15 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     # Train the model
-    model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y_test))
+    model.fit(x_train, y_train, epochs=10, batch_size=32, validation_data=(x_test, y_test))
 
     # Evaluate the model
-    loss, accuracy = model.evaluate(X_test, y_test)
+    loss, accuracy = model.evaluate(x_test, y_test)
     print("Test Loss:", loss)
     print("Test Accuracy:", accuracy)
 
     # Predict on the test set
-    y_pred_test = model.predict(X_test)
+    y_pred_test = model.predict(x_test)
     y_pred_classes = np.argmax(y_pred_test, axis=1)
 
     # Additional evaluation metrics
@@ -186,7 +185,7 @@ if __name__ == '__main__':
     metadata = load_metadata(metadata_path, spectrogram_path)
 
     print("Cargando espectrogramas...")
-    data = load_spectrograms(metadata, cache_file, spectrogram_path)
+    data = load_spectrograms(metadata, cache_file, spectrogram_path, True)
 
     print("Cargando modelo...")
     base_dcnn_algorithm(data)
