@@ -1,4 +1,6 @@
 import os
+import pathlib
+
 import librosa as lb
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,34 +21,33 @@ from sklearn.preprocessing import LabelEncoder
 
 
 # ======================================================================================================================
-def base_dcnn_algorithm():
+def base_dcnn_algorithm(data: list, labels: list):
     """Algoritmo base de dCNN para reconocimento de audios de pájaros"""
 
     # Set the path to the audio files folder
-    audio_folder = "./data/spectrograms/"
-
+    spectograms_folder = os.path.abspath("./data/spectrograms/")
     # Initialize empty lists for spectrogram data and labels
-    data = []
-    labels = []
-    # Iterate through the audio files in the folder
-    for filename in os.listdir(audio_folder):
-        if filename.endswith(".mp3"):
-            # Load the audio file
-            audio_path = os.path.join(audio_folder, filename)
-            y, sr = lb.load(audio_path)
-
-            # Extract spectrogram features
-            spectrogram = np.abs(lb.stft(y))
-
-            # Resize the spectrogram to a fixed shape (e.g., 128x128)
-            spectrogram_resized = np.resize(spectrogram, (128, 128))
-
-            # Append the spectrogram data and label to the respective lists
-            data.append(spectrogram_resized)
-            labels.append(filename.split(".")[0])  # Assuming the filename is in the format "bird_label.mp3"
+    # data = []
+    # labels = []
+    # # Iterate through the audio files in the folder
+    # for filename in os.listdir(spectrograms_folder):
+    #     if filename.endswith(".mp3"):
+    #         # Load the audio file
+    #         audio_path = os.path.join(spectograms_folder, filename)
+    #         y, sr = lb.load(audio_path)
+    #
+    #         # Extract spectrogram features
+    #         spectrogram = np.abs(lb.stft(y))
+    #
+    #         # Resize the spectrogram to a fixed shape (e.g., 128x128)
+    #         spectrogram_resized = np.resize(spectrogram, (128, 128))
+    #
+    #         # Append the spectrogram data and label to the respective lists
+    #         data.append(spectrogram_resized)
+    #         labels.append(filename.split(".")[0])  # Assuming the filename is in the format "bird_label.mp3"
 
     # Convert the lists to numpy arrays
-    X = np.array(data)
+    x = np.array(data)
     y = np.array(labels)
 
     # Encode the labels as integers
@@ -54,7 +55,7 @@ def base_dcnn_algorithm():
     encoded_labels = label_encoder.fit_transform(y)
 
     # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, encoded_labels, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(x, encoded_labels, test_size=0.3, random_state=42)
 
     # Expand dimensions for CNN input
     X_train = np.expand_dims(X_train, axis=-1)
@@ -73,7 +74,6 @@ def base_dcnn_algorithm():
         tf.keras.layers.Dense(64, activation='relu'),
         tf.keras.layers.Dense(num_classes, activation='softmax')
     ])
-
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     # Train the model
@@ -110,29 +110,74 @@ def base_dcnn_algorithm():
 
 
 # ======================================================================================================================
-def load_metadata(metadata_path: str) -> pd.DataFrame:
-    """Loads metadata file and removes overlapping entries for each spectrogram."""
+def overlaps(record_a: tuple, record_b: tuple) -> bool:
+    return record_a.sec_i < record_b.sec_i < record_a.sec_f \
+        or record_a.sec_i < record_b.sec_f < record_b.sec_f
+
+
+# ======================================================================================================================
+def load_metadata(metadata_path: str, spectrogram_path: str) -> pd.DataFrame:
+    """Loads metadata file and removes missing and overlapping candidates entries for each spectrogram."""
     if not os.path.exists(metadata_path):
         raise FileNotFoundError(f"Metadata no encontrado en {metadata_path}.")
 
-    metadada_df = pd.read_csv(metadata_path, sep=';', header=0, engine='python')
-    metadada_df.reset_index(drop=True)
-    return metadada_df
+    if not os.path.exists(spectrogram_path):
+        raise FileNotFoundError(f"Folder de espectrogramas no encontrado en {spectrogram_path}.")
+
+    print(f"cargando metadata desde: {metadata_path}")
+    print(f"validando espectrogramas desde: {spectrogram_path}")
+
+    # Cargamos archivo de metadatos donde están los spectogramas
+    metadata = pd.read_csv(metadata_path, sep=';', header=0, engine='python')
+
+    # Filtramos los archivos que no han sido encontrados.
+    results = []
+    for record in metadata.iterrows():
+        species = record[1].species
+        spectrogram = record[1].spectrogram_name
+        filename = f"{spectrogram_path}/{species}/{spectrogram}"
+        if os.path.exists(filename):
+            results.append(record[1])
+
+    # Sobre-escribimos el dataframe con los archivos existentes
+    metadata = pd.DataFrame(results)
+
+    # Seleccionamos solo los spectrogramas que no se solapen para cada archivo
+    results = []
+    for audio_name in metadata['audio_name'].unique():
+        segments = metadata[metadata['audio_name'] == audio_name]
+        if len(segments) == 0:
+            continue
+        current = next(segments.itertuples())   # primero.
+        results.append(current)
+        for spectrogram in segments.itertuples():
+            if not overlaps(current, spectrogram):
+                results.append(spectrogram)
+                current = spectrogram
+
+    # Sobre-escribimos el dataframe con los archivos existentes con segmentos no solapados.
+    metadata = pd.DataFrame(results)
+    metadata.reset_index(drop=True)
+
+    return metadata
+
 
 # ======================================================================================================================
-def load_audio_data(metadata: pd.DataFrame, filename: str, data_folder: str, reload: bool = False) -> pd.DataFrame:
-    # Load pre-created file.
+def load_spectrograms(metadata: pd.DataFrame, filename: str, data_folder: str, reload: bool = False) -> pd.DataFrame:
+
+    # Cargar archivo pre-generado
     if os.path.exists(filename) and not reload:
         df = pd.read_csv(filename, sep=',', engine='python')
         df.reset_index(drop=True)
         return df;
 
     # Reload data from files
-    files = ff.find_files(data_folder, ".mp3")
+    files = ff.find_files(data_folder, ".npy")
     data = []
     for bird_name in files.keys():
         for audio_path in files[bird_name]:
             text_path = audio_path.replace(".mp3", ".txt")
+
             # Verificamos que el audio tenga etiquetas
             if not os.path.exists(text_path):
                 print(f"audio {audio_path} no tiene tags")
@@ -170,9 +215,8 @@ def load_audio_data(metadata: pd.DataFrame, filename: str, data_folder: str, rel
 # ======================================================================================================================
 if __name__ == '__main__':
     metadata_path = os.path.abspath("./data/metadata.csv")
-    print(f"loading metadata file: {metadata_path}")
-    metadata = load_metadata(metadata_path)
-    print(metadata.describe())
+    spectrogram_path = os.path.abspath("./data/spectrograms")
+    metadata = load_metadata(metadata_path, spectrogram_path)
 
     # TODO: Ajustar carga de espectrogramas
     # load_audio_data(metadata, os.path.abspath("./data/birds_data_dcnn.csv"), os.path.abspath("./data/audio_files"))
