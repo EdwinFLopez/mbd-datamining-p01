@@ -37,37 +37,30 @@ def load_metadata(metadata_path: str, spectrogram_path: str) -> pd.DataFrame:
     metadata = pd.read_csv(metadata_path, sep=';', header=0, engine='python')
 
     # Filtramos los archivos que no han sido encontrados.
-    results = []
-    for record in metadata.iterrows():
-        species = record[1].species
-        spectrogram = record[1].spectrogram_name
-        filename = f"{spectrogram_path}/{species}/{spectrogram}"
-        if os.path.exists(filename):
-            results.append(record[1])
-        else:
-            print(f"{filename} no existe. Ignorando.")
-
-    # Sobre-escribimos el dataframe con los archivos existentes
-    metadata = pd.DataFrame(results)
+    metadata['remove'] = metadata.apply(
+        lambda row: not os.path.exists(f"{spectrogram_path}/{row.species}/{row.spectrogram_name}"),
+        axis=1
+    )
+    metadata = metadata.query("remove != True")
+    metadata.drop(columns=['remove'], axis=1, inplace=True)
     metadata.reset_index(drop=True, inplace=True)
 
     # Seleccionamos solo los espectrogramas que no se solapen para cada archivo
-    results = []
+    results = pd.DataFrame()
     for audio_name in metadata['audio_name'].unique():
         segments = metadata[metadata['audio_name'] == audio_name]
         if len(segments) == 0:
             continue
-        current = next(segments.itertuples())  # primero.
-        results.append(current)
-        for spectrogram in segments.itertuples():
+        current = next(segments.itertuples(index=False))  # primero.
+        results = pd.concat([results, pd.DataFrame([current])], ignore_index=True)
+        for spectrogram in segments.itertuples(index=False):
             if not overlaps(current, spectrogram):
-                results.append(spectrogram)
+                results = pd.concat([results, pd.DataFrame([spectrogram])], ignore_index=True)
                 current = spectrogram
 
     # Sobre-escribimos el dataframe con los archivos existentes con segmentos no solapados.
-    metadata = pd.DataFrame(results)
+    metadata = results
     metadata.reset_index(drop=True)
-
     return metadata
 
 
@@ -84,28 +77,32 @@ def load_spectrograms(metadata: pd.DataFrame, filename: str, spectrograms_folder
         df.reset_index(drop=True)
         return df;
 
-    data = []
-    for spectrogram in metadata.itertuples():
+    data = pd.DataFrame()
+    for spectrogram in metadata.itertuples(index=False):
         spectro_name = spectrogram.spectrogram_name
         species = spectrogram.species
         spectro_file_path = f"{spectrograms_folder}/{species}/{spectro_name}"
-        if os.path.exists(spectro_file_path):
-            npy = np.abs(np.load(spectro_file_path))
-            for entry in npy.T:
-                row = entry.tolist() + [species]
-                data.append(row)
-        else:
+        if not os.path.exists(spectro_file_path):
             print(f"No existe el archivo {spectro_file_path}")
+            continue
+        npy = np.abs(np.load(spectro_file_path))
+        # Agregamos la columna de los labels al espectrograma
+        temp = np.concatenate((npy.T, [[species]]*len(npy.T)), axis=1)
+        # Agregamos el nuevo dataframe a datos
+        data = pd.concat([data, pd.DataFrame(temp)], ignore_index=True)
+        #for entry in npy.T:
+        #    row = entry.tolist() + [species]
+        #    data = pd.concat([data, pd.DataFrame([row])], ignore_index=True)
 
-    columns = [f'col_{i + 1}' for i in range(len(data[0]) - 1)] + ['label']
-    spectrograms_df = pd.DataFrame(data, columns=columns)
+    data.columns = [f'col_{i + 1}' for i in range(len(data.iloc[0]) - 1)] + ['label']
+    data.reset_index(drop=True)
 
     # Recrear el archivo de data de los espectrogramas leídos.
     if os.path.exists(filename):
         os.remove(filename)
 
-    spectrograms_df.to_csv(filename, index=False)
-    return spectrograms_df
+    data.to_csv(filename, index=False)
+    return data
 
 
 # ======================================================================================================================
@@ -134,8 +131,11 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
 
     # Build the CNN model using tf.keras
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 1)),
+        tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(64, activation='relu'),
         tf.keras.layers.Dense(num_classes, activation='softmax')
