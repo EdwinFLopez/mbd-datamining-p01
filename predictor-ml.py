@@ -97,9 +97,11 @@ def load_features_dataframe(features_file: str, data_folder: str, reload: bool =
 
 
 # ======================================================================================================================
-
 if __name__ == "__main__":
-    df_feat = load_features_dataframe(os.path.abspath("./data/birds_features.csv"), os.path.abspath("./data/audio_files"))
+    features_file = os.path.abspath("./data/birds_features.csv")
+    audio_files = os.path.abspath("./data/audio_files")
+
+    df_feat = load_features_dataframe(features_file, audio_files)
 
     # Training the Support Vector Machine (SVM)
     X = df_feat.drop(columns=['label'])

@@ -177,8 +177,8 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
 
 # ======================================================================================================================
 if __name__ == '__main__':
-    cache_file = os.path.abspath("./data/birds_data_dcnn.csv")
-    metadata_path = os.path.abspath("./data/metadata.csv")
+    cache_file = os.path.abspath("./data/birds_data_dcnn-50.csv")
+    metadata_path = os.path.abspath("./data/metadata-50.csv")
     spectrogram_path = os.path.abspath("./data/spectrograms")
 
     print("Cargando metadata...")
