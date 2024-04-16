@@ -85,14 +85,12 @@ def load_spectrograms(metadata: pd.DataFrame, filename: str, spectrograms_folder
         if not os.path.exists(spectro_file_path):
             print(f"No existe el archivo {spectro_file_path}")
             continue
+        # Cargamos el espectrograma
         npy = np.abs(np.load(spectro_file_path))
         # Agregamos la columna de los labels al espectrograma
         temp = np.concatenate((npy.T, [[species]]*len(npy.T)), axis=1)
         # Agregamos el nuevo dataframe a datos
         data = pd.concat([data, pd.DataFrame(temp)], ignore_index=True)
-        #for entry in npy.T:
-        #    row = entry.tolist() + [species]
-        #    data = pd.concat([data, pd.DataFrame([row])], ignore_index=True)
 
     data.columns = [f'col_{i + 1}' for i in range(len(data.iloc[0]) - 1)] + ['label']
     data.reset_index(drop=True)
@@ -124,6 +122,10 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
     x_train = np.expand_dims(x_train, axis=-1)
     x_test = np.expand_dims(x_test, axis=-1)
 
+    # Reshape
+    # x_train = np.reshape(x_train, (-1, 224, 224, 1))
+    # x_test = np.reshape(x_test, (-1, 224, 224, 1))
+
     # One-hot encode the labels
     num_classes = len(np.unique(encoded_labels))
     y_train = tf.keras.utils.to_categorical(y_train, num_classes)
@@ -131,7 +133,7 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
 
     # Build the CNN model using tf.keras
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 1)),
+        tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=(224,224,1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
@@ -143,7 +145,7 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     # Train the model
-    model.fit(x_train, y_train, epochs=10, batch_size=32, validation_data=(x_test, y_test))
+    model.fit(x_train, y_train, epochs=10, batch_size=64, validation_data=(x_test, y_test))
 
     # Evaluate the model
     loss, accuracy = model.evaluate(x_test, y_test)
