@@ -111,6 +111,8 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
     x = data.drop(columns=['label'])
     y = data['label']
 
+    x = x / 255.0 # Normalizar los valores
+
     # Encode the labels as integers
     label_encoder = LabelEncoder()
     encoded_labels = label_encoder.fit_transform(y)
@@ -118,13 +120,13 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
     # Split the data into training and testing sets
     x_train, x_test, y_train, y_test = train_test_split(x, encoded_labels, test_size=0.3, random_state=42)
 
+    # Reshape
+    x_train = np.reshape(x_train, (-1, 224, 224, 1))
+    x_test = np.reshape(x_test, (-1, 224, 224, 1))
+
     # Expand dimensions for CNN input
     x_train = np.expand_dims(x_train, axis=-1)
     x_test = np.expand_dims(x_test, axis=-1)
-
-    # Reshape
-    # x_train = np.reshape(x_train, (-1, 224, 224, 1))
-    # x_test = np.reshape(x_test, (-1, 224, 224, 1))
 
     # One-hot encode the labels
     num_classes = len(np.unique(encoded_labels))
@@ -137,9 +139,14 @@ def base_dcnn_algorithm(data: pd.DataFrame) -> None:
         tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Conv2D(256, (3, 3), activation='relu'),
+        tf.keras.layers.Dropout(0.5),
+
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dropout(0.5),
         tf.keras.layers.Dense(num_classes, activation='softmax')
     ])
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
