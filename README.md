@@ -7,7 +7,7 @@ Práctica de minería de datos sobre 3 tipos de algoritmos de predicción, usand
 
 * Machine learning con **SVC**: en script `predictor-ml.py`
 * Ensemble con **RandomForest**: en script `predictor-en.py`
-* DeepLearning con **DNN**: en script `predictor-dl.py`
+* DeepLearning con **DNN**: en notebooks `predictor-dl.ipynb` y con la última ejecución: `predictor-dl-outputs.ipynb`  
 
 El objetivo de la predicción es evaluar si un canto de ave pertenece a alguna de las especies observadas
 en el entrenamiento.
@@ -112,9 +112,8 @@ Este archivo se usa para evitar el reprocesamiento de los audios para extraer lo
 
 #### DeepLearning con **DNN**
 
-```shell
-$ python predictor-dl.py
-```
+En este caso, se utiliza un notebook jupyter. El notebook es `predictor-dl.ipynb`. En nuestro caso
+utilizamos tanto PyCharm como VSCode para procesarlo y ejecutarlo.
+El modelo entrenado se almacena en la ruta: `./data/DL_model_birds.h5`.
 
-La primera vez que se ejecuta, crea un archivo del modelo `./data/birds_data_dcnn.csv`.
-Este archivo se usa para evitar el reprocesamiento de los espectogramas.
+Para ver los últimos cálculos generados, se debe cargar el notebook `predictor-dl-outputs.ipynb`. 
